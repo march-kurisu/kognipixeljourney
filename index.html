@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>KogniPixel</title>
+  <link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@600&display=swap" rel="stylesheet">
+  <style>
+    /* --- GLOBAL RESET --- */
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; background:#0b0f14; font-family: "Pixelify Sans", monospace; }
+    button, input { font: inherit; }
+    
+
+    /* --- APP WRAPPER (locks to 16:9) --- */
+    
+    .app-wrap {
+      position: relative; 
+      height: 100svh; 
+      width: 100vw;
+      display: grid; 
+      place-items: center; 
+      overflow: hidden;
+      color: #e6f0ff;
+      
+    }
+
+    .stage {
+  position: relative; 
+  width: 100vw;             /* lebar penuh layar */
+  aspect-ratio: 16/9;       /* paksa rasio 16:9 */
+  max-height: 100vh;        /* jangan lebih tinggi dari layar */
+  margin: auto;             /* center di layar */
+  background: #ee1414;
+  border: 3px solid #e6e8eb; 
+  border-radius: 18px; 
+  overflow: hidden; 
+  image-rendering: pixelated; 
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+}
+
+
+
+    /* --- PAGES / SCREENS --- */
+    .screen { position:absolute; inset:0; display:none; }
+    .screen.active { display:block; }
+
+    /* --- START SCREEN LAYOUT --- */
+    .start-grid {
+      display:grid; grid-template-columns: 1.2fr 1fr; height:100%;
+      background: linear-gradient(180deg, #0b0f14, #2e1515);
+    }
+    .start-left { display:flex; align-items:center; justify-content:center; }
+    .start-card {
+      width:min(520px, 90%);
+      background:#311212; border:2px solid #5e2828; border-radius:16px; padding:22px;
+      box-shadow: inset 0 0 0 2px rgba(255,255,255,0.03), 0 10px 24px rgba(0, 0, 0, 0.35);
+    }
+    .title { font-weight:800; letter-spacing: 1px; margin:0 0 10px; font-size: clamp(20px, 2.8vw, 38px); }
+    .subtitle { opacity:.8; margin:0 0 18px; font-size: clamp(12px, 1.2vw, 16px); }
+    .row { display:flex; gap:10px; flex-wrap: wrap;}
+    .input {
+      flex:1; min-width: 0; padding:12px 18px; background:#220d0d; border:2px solid #642a2a; color:#ffcfcf; border-radius:12px; flex-shrink: 0;
+      outline:none; transition:.2s; font-weight:700; letter-spacing:.3px;
+    }
+    .input:focus { border-color:#ff4f4f; box-shadow:0 0 0 4px rgba(255, 79, 79, 0.15); }
+    .btn {
+      background:#ff2b2b; border:none; color:white; padding:12px 18px; border-radius:12px; font-weight:800; cursor:pointer; transition:.15s; letter-spacing:.4px;
+    }
+    .btn:hover { transform: translateY(-1px); filter: brightness(1.05); }
+    .start-right { position:relative; }
+    .art-placeholder { position:absolute; inset:0; background: repeating-linear-gradient(135deg, #230e0e, #230e0e 12px, #310f0f 12px, #310f0f 24px); }
+    .art-hint { position:absolute; bottom:14px; right:14px; opacity:.7; font-size:12px; }
+
+    /* --- CHARACTER SELECT --- */
+    .select-wrap { height:100%; display:grid; grid-template-rows: auto 1fr auto; padding:16px; background:#1c0c0c; gap:12px; }
+    .select-grid { display:grid; grid-template-columns: 1fr 1fr; gap:16px; height:100%; }
+    .char-card { background:#311212; border:2px solid #5e2828; border-radius:16px; padding:12px; display:grid; grid-template-rows: 1fr auto; cursor:pointer; transition:.15s; }
+    .char-card:hover { transform: translateY(-2px); }
+    .char-img { display:grid; place-items:center; background:#220d0d; border-radius:12px; overflow:hidden; }
+    .char-img img { width: 75%; image-rendering: pixelated; }
+    .char-label { text-align:center; padding:10px; font-weight:800; }
+    .char-card.selected { outline: 3px solid #ff4f4f; }
+
+    /* --- GAME --- */
+    canvas { display:block; width:100%; height:100%; background:#190909; }
+
+    /* HUD */
+    .hud { position:absolute; left:12px; top:12px; display:flex; gap:10px; flex-wrap:wrap; }
+    .hud .chip { background:rgba(0,0,0,.45); border:1px solid #582727; padding:8px 10px; border-radius:10px; font-weight:800; }
+
+    /* On-screen Joystick */
+    .joystick {
+      position:absolute; bottom:20px; left:20px; width:140px; height:140px; border-radius:50%;
+      background: radial-gradient(circle at 30% 30%, #371616, #290f0f); border:2px solid #642a2a;
+      touch-action:none; user-select:none;
+    }
+    .stick {
+      position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+      width:72px; height:72px; border-radius:50%;
+      background: radial-gradient(circle at 30% 30%, #ff2b2b, #a81e1e); border:3px solid #ff4f4f; box-shadow: 0 8px 18px rgba(0, 0, 0, 0.45);
+      touch-action:none;
+    }
+
+    /* --- QUIZ OVERLAY --- */
+    .overlay { position:absolute; inset:0; display:none; align-items:center; justify-content:center; backdrop-filter: blur(4px); }
+    .overlay.show { display:flex; }
+    .panel { width:min(720px, 92%); background:#290f0f; border:2px solid #5e2828; border-radius:16px; padding:20px; }
+    .panel h3 { margin:0 0 8px; font-size: clamp(18px, 2.5vw, 28px); }
+    .panel p { margin:0 0 12px; opacity:.85; }
+    .options { display:grid; gap:10px; }
+    .opt-btn { padding:12px; border:2px solid #642a2a; background:#220d0d; border-radius:12px; cursor:pointer; text-align:left; font-weight:700; -webkit-text-fill-color: #e6f0ff; }
+    .timerbar { height:10px; border-radius:999px; background:#321313; border:1px solid #582727; overflow:hidden; margin: 8px 0 14px; }
+    .timerbar > div { height:100%; width:100%; background:#ff2b2b; }
+
+    /* --- FAIL POPUP --- */
+    .popup { position:absolute; inset:0; display:none; place-items:center; }
+    .popup.show { display:grid; }
+    .popup .panel { text-align:center; }
+
+    /* --- RESULT / LEADERBOARD --- */
+    .result-wrap { height:100%; display:grid; grid-template-rows: auto 1fr auto; padding:16px; background:#1c0c0c; gap:12px; }
+    .board { height:100%; overflow:auto; border:2px solid #5e2828; border-radius:16px; }
+    table { width:100%; border-collapse:collapse; }
+    th, td { padding:12px; border-bottom:1px solid #491818; }
+    th { text-align:left; background:#341010; position:sticky; top:0; }
+
+  </style>
+</head>
+<body>
+  <div class="app-wrap">
+    <div class="stage" id="stage">
+
+      <!-- PAGE 1: START / USERNAME -->
+      <section class="screen active" id="screen-start">
+        <div class="start-grid">
+          <div class="start-left">
+            <div class="start-card">
+              <h1 class="title">KogniPixel Journey</h1>
+              <p class="subtitle">Let's go beyond the end of the journey together! But, let us get to know you!</p>
+              <div class="row">
+                <input id="username" class="input" maxlength="18" placeholder="Your adventurer's name!" />
+                <button id="btnStart" class="btn">Start</button>
+              </div>
+            </div>
+          </div>
+          <div class="start-right">
+            <style>
+
+#background-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;   /* penuh tapi bisa kepotong */
+}
+            </style>
+            <!-- Tempat kosong untuk art (ganti elemen ini sesuai kebutuhan) -->
+              <video autoplay loop muted id="background-video">
+            <source src="bganimateloop.mp4" type="video/mp4">
+          </div>
+        </div>
+      </section>
+
+      <!-- PAGE 2: CHARACTER SELECT -->
+      <section class="screen" id="screen-select">
+        <div class="select-wrap">
+          <h2 style="margin:0;">Pilih Karakter</h2>
+          <div class="select-grid">
+            <div class="char-card" data-char="0">
+              <div class="char-img">
+                <!-- GANTI SRC DI BAWAH DENGAN PNG KARAKTER ANDA -->
+                <img id="char0Img" alt="Karakter A" src="riri.png">
+              </div>
+              <div class="char-label">Karakter A</div>
+            </div>
+            <div class="char-card" data-char="1">
+              <div class="char-img">
+                <!-- GANTI SRC DI BAWAH DENGAN PNG KARAKTER ANDA -->
+                <img id="char1Img" alt="Karakter B" src="marmar.png">
+              </div>
+              <div class="char-label">Karakter B</div>
+            </div>
+          </div>
+          <div style="display:flex; gap:10px; justify-content:flex-end;">
+            <button id="btnBack1" class="btn" style="background:#4f2f2f;">Kembali</button>
+            <button id="btnContinue" class="btn" disabled>Lanjut</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- PAGE 3: GAME -->
+      <section class="screen" id="screen-game">
+        <canvas id="game" width="1280" height="720"></canvas>
+        <div class="hud">
+          <div class="chip">User: <span id="hudUser">-</span></div>
+          <div class="chip">Skor: <span id="hudScore">0</span></div>
+          <div class="chip">Quiz: <span id="hudQuiz">0</span>/4</div>
+          <div class="chip">Waktu survive: <span id="hudSurvive">0.0</span>s</div>
+        </div>
+        <!-- On-screen joystick -->
+        <div class="joystick" id="joystick">
+          <div class="stick" id="stick"></div>
+        </div>
+
+        <!-- QUIZ OVERLAY -->
+        <div class="overlay" id="quizOverlay">
+          <div class="panel">
+            <h3 id="qTitle">Kuis</h3>
+            <div class="timerbar"><div id="qTimerFill"></div></div>
+            <p id="qText">Pertanyaan...</p>
+            <div class="options" id="qOptions"></div>
+          </div>
+        </div>
+
+        <!-- FAIL POPUP -->
+        <div class="popup" id="failPopup">
+          <div class="panel">
+            <h3>Ups! Kamu menabrak rintangan.</h3>
+            <p>Ingin coba lagi?</p>
+            <div style="display:flex; gap:10px; justify-content:center;">
+              <button class="btn" id="btnRetry">Coba Lagi</button>
+              <button class="btn" id="btnQuit" style="background:#4f2f2f;">Keluar</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- PAGE 4: RESULT / LEADERBOARD -->
+      <section class="screen" id="screen-result">
+        <div class="result-wrap">
+          <h2 style="margin:0;">Leaderboard</h2>
+          <div class="board">
+            <table>
+              <thead>
+                <tr>
+                  <th style="width:80px;">Peringkat</th>
+                  <th>Username</th>
+                  <th>Skor</th>
+                  <th>Tanggal</th>
+                </tr>
+              </thead>
+              <tbody id="leaderBody"></tbody>
+            </table>
+          </div>
+          <div style="display:flex; gap:10px; justify-content:flex-end;">
+            <button id="btnAgain" class="btn">Main Lagi</button>
+            <button id="btnResetBoard" class="btn" style="background:#8b2b2b;">Reset Leaderboard</button>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div> 
+
+  <script>
+    // =============================
+    //  UTIL & GLOBAL STATE
+    // =============================
+    const screens = {
+      start: document.getElementById('screen-start'),
+      select: document.getElementById('screen-select'),
+      game: document.getElementById('screen-game'),
+      result: document.getElementById('screen-result'),
+    };
+    function goto(name){ Object.values(screens).forEach(s=>s.classList.remove('active')); screens[name].classList.add('active'); }
+
+    const stage = document.getElementById('stage');
+
+    const state = {
+      user: '',
+      selectedChar: 0,
+      score: 0,
+      quizIndex: 0, // 0..3 (4 soal)
+      running: false,
+      crashed: false,
+    };
+
+    // =============================
+    //  START PAGE
+    // =============================
+    const usernameEl = document.getElementById('username');
+    const btnStart = document.getElementById('btnStart');
+    btnStart.addEventListener('click', () => {
+      const name = (usernameEl.value || '').trim();
+      if(!name){ usernameEl.focus(); return; }
+      state.user = name;
+      goto('select');
+    });
+
+    // =============================
+    //  CHARACTER SELECT
+    // =============================
+    let selectedCard = null;
+    const cards = Array.from(document.querySelectorAll('.char-card'));
+    const btnBack1 = document.getElementById('btnBack1');
+    const btnContinue = document.getElementById('btnContinue');
+    cards.forEach(card => {
+      card.addEventListener('click', () => {
+        cards.forEach(c=>c.classList.remove('selected'));
+        card.classList.add('selected');
+        selectedCard = card;
+        state.selectedChar = parseInt(card.dataset.char,10);
+        btnContinue.disabled = false;
+      });
+    });
+    btnBack1.addEventListener('click', () => { goto('start'); });
+    btnContinue.addEventListener('click', () => { startGame(); });
+
+    // =============================
+    //  GAME CORE (Canvas)
+    // =============================
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+    // --- GANTI PATH PNG DI SINI SESUAI ASET ANDA ---
+    const assets = {
+      bg: 'latar.png',
+      obstacle: 'trala.png',
+      char0: document.getElementById('char0Img').src,
+      char1: document.getElementById('char1Img').src,
+    };
+
+    const hudUser = document.getElementById('hudUser');
+    const hudScore = document.getElementById('hudScore');
+    const hudQuiz = document.getElementById('hudQuiz');
+    const hudSurvive = document.getElementById('hudSurvive');
+
+    // Physics / world
+    const world = {
+      w: canvas.width,
+      h: canvas.height,
+      speed: 3.5, // base obstacle speed
+      player: { x: 140, y: 360, r: 26, vx:0, vy:0, maxSpeed: 4.2 },
+      obstacles: [],
+      lastSpawn: 0,
+      spawnEvery: 1200, // ms
+      bgOffset: 0,
+      surviveSince: 0, // ms since last quiz
+    };
+
+    // Load images
+    function loadImage(src){ return new Promise(res=>{ const i=new Image(); i.src=src; i.onload=()=>res(i); i.crossOrigin='anonymous'; }); }
+    let imgBg, imgChar, imgObs;
+
+
+    // QUIZ DATA (ganti sesuai kebutuhan)
+    const QUIZZES = [
+      { q: 'Ibu kota Indonesia adalah ...', opts: ['Bandung','Jakarta','Surabaya','Medan'], correct: 1 },
+      { q: '5 + 7 = ...', opts: ['10','11','12','13'], correct: 2 },
+      { q: 'Bahasa pemrograman untuk web:', opts: ['HTML','CSS','JavaScript','SQL'], correct: 2 },
+      { q: 'Lawan kata "besar" adalah ...', opts: ['Kecil','Panjang','Lebar','Tipis'], correct: 0 },
+    ];
+
+    // Quiz controls
+    const quizOverlay = document.getElementById('quizOverlay');
+    const qTitle = document.getElementById('qTitle');
+    const qText = document.getElementById('qText');
+    const qOptions = document.getElementById('qOptions');
+    const qTimerFill = document.getElementById('qTimerFill');
+    const FAIL_POP = document.getElementById('failPopup');
+
+    const QUIZ_EVERY_SURVIVE = 10000; // 10 detik survival -> munculkan soal
+    const QUIZ_TIME_LIMIT = 30000; // 30 detik per soal
+
+    let rafId = 0, lastTime = 0; 
+
+    function resetWorld(){
+      world.obstacles = [];
+      world.lastSpawn = 0; world.bgOffset = 0; world.surviveSince = 0;
+      world.player.x = 140; world.player.y = world.h/2; world.player.vx = 0; world.player.vy = 0;
+    }
+
+    async function startGame(){
+      // Choose char image
+      imgChar = await loadImage(state.selectedChar === 0 ? assets.char0 : assets.char1);
+      imgBg = await loadImage(assets.bg);
+      imgObs = await loadImage(assets.obstacle);
+
+      state.score = 0; state.quizIndex = 0; state.running = true; state.crashed = false;
+      hudUser.textContent = state.user;
+      hudScore.textContent = '0';
+      hudQuiz.textContent = '0';
+      hudSurvive.textContent = '0.0';
+
+      resetWorld();
+      goto('game');
+      lastTime = performance.now();
+      rafId = requestAnimationFrame(gameLoop);
+    }
+
+    function spawnObstacle(){
+      const size = 60 + Math.random()*40;
+      const y = 60 + Math.random()*(world.h - 120 - size);
+      world.obstacles.push({ x: world.w + 30, y, w: size, h: size });
+    }
+
+    function draw(){
+      // Parallax background
+      const bw = imgBg.width, bh = imgBg.height;
+      world.bgOffset = (world.bgOffset - world.speed*0.6) % bw;
+      for(let x = world.bgOffset; x < world.w; x += bw){ ctx.drawImage(imgBg, x, 0, bw, world.h); }
+
+      // Player
+      const px = world.player.x, py = world.player.y;
+      ctx.save();
+      ctx.translate(px, py);
+      // Pixel snap
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(imgChar, -32, -32, 64, 64);
+      ctx.restore();
+
+      // Obstacles
+      ctx.imageSmoothingEnabled = false;
+      world.obstacles.forEach(o => {
+        ctx.drawImage(imgObs, o.x, o.y, o.w, o.h);
+      });
+
+      // Ground line (subtle)
+      ctx.fillStyle = 'rgba(255,255,255,0.04)';
+      ctx.fillRect(0, world.h-60, world.w, 2);
+    }
+
+    function update(dt){
+      // spawn obstacles
+      world.lastSpawn += dt;
+      if(world.lastSpawn >= world.spawnEvery){ world.lastSpawn = 0; spawnObstacle(); }
+      // move obstacles
+      const speed = world.speed + (state.quizIndex*0.3); // a bit faster each quiz
+      world.obstacles.forEach(o => { o.x -= speed; });
+      // remove offscreen
+      world.obstacles = world.obstacles.filter(o => o.x + o.w > -40);
+
+      // player move
+      world.player.x += world.player.vx; world.player.y += world.player.vy;
+      // bounds
+      const m = 6; // margin
+      world.player.x = Math.max(32+m, Math.min(world.w-32-m, world.player.x));
+      world.player.y = Math.max(32+m, Math.min(world.h-32-60, world.player.y));
+
+      // survive timer
+      world.surviveSince += dt;
+      hudSurvive.textContent = (world.surviveSince/1000).toFixed(1);
+
+      // collision
+      const pr = world.player.r;
+      for(const o of world.obstacles){
+        if(circleRectCollide(world.player.x, world.player.y, pr, o.x, o.y, o.w, o.h)){
+          crash(); return;
+        }
+      }
+
+      // Trigger quiz after 10s survival, up to 4 quizzes
+      if(state.quizIndex < 4 && world.surviveSince >= QUIZ_EVERY_SURVIVE){
+        world.surviveSince = 0; // reset survival timer
+        pauseForQuiz();
+      }
+    }
+
+    function gameLoop(now){
+      if(!state.running) return;
+      const dt = now - lastTime; lastTime = now;
+      ctx.clearRect(0, 0, world.w, world.h);
+      update(dt);
+      draw();
+      rafId = requestAnimationFrame(gameLoop);
+    }
+
+    function crash(){
+      state.crashed = true; state.running = false;
+      cancelAnimationFrame(rafId);
+      FAIL_POP.classList.add('show');
+    }
+
+    // =============================
+    //  QUIZ LOGIC
+    // =============================
+    let quizTimerId = null; let quizStartTime = 0; let timerLeft = QUIZ_TIME_LIMIT;
+
+    function pauseForQuiz(){
+      // Pause loop
+      cancelAnimationFrame(rafId);
+      // Build quiz UI
+      const idx = state.quizIndex;
+      const data = QUIZZES[idx];
+      qTitle.textContent = `Kuis ${idx+1} dari 4`;
+      qText.textContent = data.q;
+      qOptions.innerHTML = '';
+      data.opts.forEach((opt, i) => {
+        const b = document.createElement('button');
+        b.className = 'opt-btn'; b.textContent = opt;
+        b.addEventListener('click', () => submitAnswer(i === data.correct));
+        qOptions.appendChild(b);
+      });
+      quizOverlay.classList.add('show');
+      // Start timer
+      quizStartTime = performance.now();
+      timerLeft = QUIZ_TIME_LIMIT; updateQuizTimer();
+      quizTimerId = setInterval(updateQuizTimer, 50);
+    }
+
+    function updateQuizTimer(){
+      const elapsed = performance.now() - quizStartTime;
+      timerLeft = Math.max(0, QUIZ_TIME_LIMIT - elapsed);
+      qTimerFill.style.width = (timerLeft/QUIZ_TIME_LIMIT*100).toFixed(2)+'%';
+      if(timerLeft <= 0){ submitAnswer(false); }
+    }
+
+    function submitAnswer(correct){
+      clearInterval(quizTimerId); quizTimerId = null;
+      // Score: cepat = poin lebih besar jika jawaban benar
+      if(correct){
+        const bonus = Math.round((timerLeft/1000) * 100); // 100 poin per detik sisa
+        state.score += Math.max(50, bonus); // minimal 50
+      }
+      hudScore.textContent = state.score.toString();
+      state.quizIndex++;
+      hudQuiz.textContent = state.quizIndex.toString();
+      quizOverlay.classList.remove('show');
+
+      if(state.quizIndex >= 4){
+        // selesai
+        finishGame();
+      } else {
+        // resume game loop
+        lastTime = performance.now();
+        rafId = requestAnimationFrame(gameLoop);
+      }
+    }
+
+    function finishGame(){
+      state.running = false; cancelAnimationFrame(rafId);
+      saveLeaderboard(state.user, state.score);
+      renderBoard();
+      goto('result');
+    }
+
+    // =============================
+    //  FAIL POPUP BUTTONS
+    // =============================
+    document.getElementById('btnRetry').addEventListener('click', () => {
+      FAIL_POP.classList.remove('show');
+      startGame();
+    });
+    document.getElementById('btnQuit').addEventListener('click', () => {
+      FAIL_POP.classList.remove('show');
+      goto('start');
+    });
+
+    // =============================
+    //  JOYSTICK (ANALOG BULAT)
+    // =============================
+    const joy = document.getElementById('joystick');
+    const stick = document.getElementById('stick');
+    const joyRect = () => joy.getBoundingClientRect();
+    const center = () => ({ cx: joy.offsetWidth/2, cy: joy.offsetHeight/2 });
+    let dragging = false;
+
+    function setStick(dx, dy){
+      const { cx, cy } = center();
+      const maxR = Math.min(cx, cy) - 6; // radius limit
+      const len = Math.hypot(dx, dy);
+      const cl = len > maxR ? maxR/len : 1;
+      const sx = dx*cl, sy = dy*cl;
+      stick.style.transform = `translate(${sx}px, ${sy}px)`; // relative to initial center via CSS? We'll use absolute left/top
+      stick.style.left = cx + 'px';
+      stick.style.top = cy + 'px';
+      stick.style.transform = `translate(${sx - stick.offsetWidth/2}px, ${sy - stick.offsetHeight/2}px)`;
+
+      // Map to velocity
+      const nx = (dx*cl)/maxR, ny = (dy*cl)/maxR; // -1..1
+      world.player.vx = nx * world.player.maxSpeed;
+      world.player.vy = ny * world.player.maxSpeed;
+    }
+    function resetStick(){
+      const { cx, cy } = center();
+      stick.style.left = cx + 'px';
+      stick.style.top = cy + 'px';
+      stick.style.transform = `translate(-50%, -50%)`;
+      world.player.vx = 0; world.player.vy = 0;
+    }
+
+    function joyPos(evt){
+      const rect = joyRect();
+      const x = (evt.touches ? evt.touches[0].clientX : evt.clientX) - rect.left;
+      const y = (evt.touches ? evt.touches[0].clientY : evt.clientY) - rect.top;
+      return { x, y };
+    }
+
+    joy.addEventListener('mousedown', e=>{ dragging=true; const {cx,cy}=center(); const {x,y}=joyPos(e); setStick(x-cx, y-cy); });
+    joy.addEventListener('touchstart', e=>{ dragging=true; const {cx,cy}=center(); const {x,y}=joyPos(e); setStick(x-cx, y-cy); }, {passive:false});
+    window.addEventListener('mousemove', e=>{ if(!dragging) return; const {cx,cy}=center(); const {x,y}=joyPos(e); setStick(x-cx, y-cy); });
+    window.addEventListener('touchmove', e=>{ if(!dragging) return; e.preventDefault(); const {cx,cy}=center(); const {x,y}=joyPos(e); setStick(x-cx, y-cy); }, {passive:false});
+    window.addEventListener('mouseup', ()=>{ dragging=false; resetStick(); });
+    window.addEventListener('touchend', ()=>{ dragging=false; resetStick(); });
+
+    // initialize stick center after layout
+    window.addEventListener('load', resetStick);
+    window.addEventListener('resize', resetStick);
+
+    // =============================
+    //  COLLISION HELPERS
+    // =============================
+    function circleRectCollide(cx, cy, cr, rx, ry, rw, rh){
+      // clamp point to rect
+      const px = Math.max(rx, Math.min(cx, rx+rw));
+      const py = Math.max(ry, Math.min(cy, ry+rh));
+      const dx = cx - px, dy = cy - py;
+      return (dx*dx + dy*dy) < (cr*cr);
+    }
+
+    // =============================
+    //  LEADERBOARD (localStorage)
+    // =============================
+    const leaderBody = document.getElementById('leaderBody');
+    function loadBoard(){
+      try{ return JSON.parse(localStorage.getItem('pqr_leaderboard')||'[]'); }catch(e){ return []; }
+    }
+    function saveBoard(arr){ localStorage.setItem('pqr_leaderboard', JSON.stringify(arr)); }
+    function saveLeaderboard(name, score){
+      const arr = loadBoard();
+      arr.push({ name, score, date: new Date().toLocaleString() });
+      arr.sort((a,b)=> b.score - a.score);
+      saveBoard(arr.slice(0, 100)); // keep top 100
+    }
+    function renderBoard(){
+      const arr = loadBoard();
+      leaderBody.innerHTML = '';
+      arr.forEach((row, i) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${i+1}</td><td>${escapeHtml(row.name)}</td><td>${row.score}</td><td>${row.date}</td>`;
+        leaderBody.appendChild(tr);
+      });
+    }
+    function escapeHtml(s){ return s.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+
+    document.getElementById('btnAgain').addEventListener('click', ()=>{ goto('start'); });
+    document.getElementById('btnResetBoard').addEventListener('click', ()=>{ if(confirm('Reset leaderboard?')){ saveBoard([]); renderBoard(); } });
+
+
+  </script>
+</body>
+</html>
