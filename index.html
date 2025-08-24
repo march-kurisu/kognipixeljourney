@@ -26,16 +26,18 @@
     }
 
     .stage {
-  position: relative; 
-  width: 100vw;             /* lebar penuh layar */
-  aspect-ratio: 16/9;       /* paksa rasio 16:9 */
-  max-height: 100vh;        /* jangan lebih tinggi dari layar */
-  margin: auto;             /* center di layar */
+  position: relative;
+  width: 100vw;         /* default penuh */
+  height: 100vh;        /* default penuh */
+  max-width: calc(100vh * 16 / 9);   /* batasi supaya tetap 16:9 */
+  max-height: calc(100vw * 9 / 16);  /* batasi supaya tetap 16:9 */
+  aspect-ratio: 16 / 9; 
+  margin: auto;
   background: #ee1414;
-  border: 3px solid #e6e8eb; 
-  border-radius: 18px; 
-  overflow: hidden; 
-  image-rendering: pixelated; 
+  border: 3px solid #e6e8eb;
+  border-radius: 18px;
+  overflow: hidden;
+  image-rendering: pixelated;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
 }
 
@@ -637,3 +639,4 @@
   </script>
 </body>
 </html>
+
