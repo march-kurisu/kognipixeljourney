@@ -349,7 +349,7 @@
   </div> 
 
   <button id="btnFullscreen" class="btn" style="position:fixed;top:10px;right:10px;z-index:999;">Fullscreen</button>
-<button id="btnExitFullscreen" class="btn" style="position:fixed;top:10px;right:10px;z-index:999;display:none;background:#423e3e;">Unfullscreen</button>
+<button id="btnExitFullscreen" class="btn" style="position:fixed;top:10px;right:10px;z-index:999;display:none;background:#423e3e;">Close</button>
 
   <script>
     // =============================
@@ -533,19 +533,18 @@ const sndSpecial = new Audio('omg.mp3');
       world.bgOffset = (world.bgOffset - world.speed*0.6) % bw;
       for(let x = world.bgOffset; x < world.w; x += bw){ ctx.drawImage(imgBg, x, 0, bw, world.h); }
 
-      // Player
+      // Player (PERBESAR: dari 64x64 ke 96x96)
       const px = world.player.x, py = world.player.y;
       ctx.save();
       ctx.translate(px, py);
-      // Pixel snap
       ctx.imageSmoothingEnabled = false;
-      ctx.drawImage(imgChar, -32, -32, 64, 64);
+      ctx.drawImage(imgChar, -48, -48, 96, 96); // ukuran lebih besar
       ctx.restore();
 
-      // Obstacles
+      // Obstacles (PERBESAR: 1.5x)
       ctx.imageSmoothingEnabled = false;
       world.obstacles.forEach(o => {
-        ctx.drawImage(imgObs, o.x, o.y, o.w, o.h);
+        ctx.drawImage(imgObs, o.x, o.y, o.w * 1.5, o.h * 1.5); // ukuran lebih besar
       });
 
       // Ground line (subtle)
@@ -826,6 +825,29 @@ btnExitFullscreen.addEventListener('click', () => {
   btnExitFullscreen.style.display = 'none';
 });
 
+/* Popup untuk rotasi perangkat */
+function checkLandscape() {
+  const w = window.innerWidth, h = window.innerHeight;
+  const isLandscape = w >= h;
+  document.getElementById('rotatePopup').style.display = isLandscape ? 'none' : 'flex';
+  // Pause game jika portrait
+  if (!isLandscape && state.running) {
+    state.running = false;
+    cancelAnimationFrame(rafId);
+  }
+  // Resume game jika landscape dan sedang di game
+  if (isLandscape && screens.game.classList.contains('active') && !state.running && state.quizIndex < 4) {
+    state.running = true;
+    lastTime = performance.now();
+    rafId = requestAnimationFrame(gameLoop);
+  }
+}
+
+window.addEventListener('resize', checkLandscape);
+window.addEventListener('orientationchange', checkLandscape);
+window.addEventListener('load', checkLandscape);
+
+
 // Sound efek saat mengetik di input username
 usernameEl.addEventListener('input', () => {
   try { sndType.currentTime = 0; sndType.play(); } catch(e){}
@@ -849,6 +871,36 @@ function startAudioIfNeeded() {
 // Play audio setelah interaksi user pertama
 window.addEventListener('click', startAudioIfNeeded, { once: true });
 window.addEventListener('touchstart', startAudioIfNeeded, { once: true });
+
+function checkLandscape() {
+  const w = window.innerWidth, h = window.innerHeight;
+  const isLandscape = w >= h;
+  document.getElementById('rotatePopup').style.display = isLandscape ? 'none' : 'flex';
+  // Pause game jika portrait
+  if (!isLandscape && state.running) {
+    state.running = false;
+    cancelAnimationFrame(rafId);
+  }
+  // Resume game jika landscape dan sedang di game
+  if (isLandscape && screens.game.classList.contains('active') && !state.running && state.quizIndex < 4) {
+    state.running = true;
+    lastTime = performance.now();
+    rafId = requestAnimationFrame(gameLoop);
+  }
+}
+
+window.addEventListener('resize', checkLandscape);
+window.addEventListener('orientationchange', checkLandscape);
+window.addEventListener('load', checkLandscape);
   </script>
+
+  <!-- Popup untuk rotasi perangkat -->
+<div id="rotatePopup" style="display:none; position:fixed; inset:0; z-index:9999; background:rgba(20,10,10,0.95); color:#fff; display:flex; align-items:center; justify-content:center;">
+  <div style="background:#2e1515; border-radius:18px; padding:32px 24px; text-align:center; max-width:90vw;">
+    <h2 style="margin-bottom:12px;">Rotate Device</h2>
+    <p style="font-size:1.1em;">Game ini hanya bisa dimainkan dalam mode landscape.<br>Silakan rotasi perangkat Anda.</p>
+  </div>
+</div>
+
 </body>
 </html>
