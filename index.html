@@ -3,7 +3,7 @@
 <head> 
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-  <title>KogniPixel</title>
+  <title>KogniPixel Journey</title>
   <link href="https://fonts.googleapis.com/css2?family=Jersey+25&family=Pixelify+Sans:wght@400..700&display=swap" rel="stylesheet">
   
   <style>
@@ -143,16 +143,22 @@
     /* Responsive quiz overlay & panel */
 @media (max-width: 700px), (max-height: 500px) {
   .overlay .panel, .popup .panel {
-    width: 92vw;
-    max-width: 400px;
-    max-height: 80vh;
-    padding: 6vw 3vw;
+    width: 96vw;
+    max-width: 370px;
+    max-height: 70vh;
+    padding: 3vw 2vw;
     font-size: 0.95rem;
     box-sizing: border-box;
     overflow-y: auto;
   }
-  .options { font-size: 0.95em; }
-  .opt-btn { padding: 10px; font-size: 1em; }
+  .options {
+    font-size: 0.95em;
+    gap: 6px;           /* lebih kecil agar opsi lebih rapat */
+  }
+  .opt-btn {
+    padding: 8px;       /* lebih kecil agar opsi lebih pendek */
+    font-size: 0.98em;
+  }
 }
 
 /* Make canvas fit parent */
@@ -825,7 +831,6 @@ usernameEl.addEventListener('input', () => {
   try { sndType.currentTime = 0; sndType.play(); } catch(e){}
 });
 
-// Sound efek saat klik tombol
 document.querySelectorAll('button').forEach(btn => {
   btn.addEventListener('click', () => {
     try { sndClick.currentTime = 0; sndClick.play(); } catch(e){}
