@@ -342,7 +342,8 @@
     </div>
   </div> 
 
-  <button onclick="requestFullScreen()" class="btn" style="position:fixed;top:10px;right:10px;z-index:999;">Fullscreen</button>
+  <button id="btnFullscreen" class="btn" style="position:fixed;top:10px;right:10px;z-index:999;">Fullscreen</button>
+<button id="btnExitFullscreen" class="btn" style="position:fixed;top:10px;right:10px;z-index:999;display:none;background:#423e3e;">Unfullscreen</button>
 
   <script>
     // =============================
@@ -354,7 +355,22 @@
       game: document.getElementById('screen-game'),
       result: document.getElementById('screen-result'),
     };
-    function goto(name){ Object.values(screens).forEach(s=>s.classList.remove('active')); screens[name].classList.add('active'); }
+    function goto(name){
+      Object.values(screens).forEach(s=>s.classList.remove('active'));
+      screens[name].classList.add('active');
+      // Musik lobby untuk start & select, musik game untuk game
+      if(name === 'start' || name === 'select'){
+        try { gameMusic.pause(); gameMusic.currentTime = 0; } catch(e){}
+        try { lobbyMusic.play(); } catch(e){}
+      } else if(name === 'game'){
+        try { lobbyMusic.pause(); lobbyMusic.currentTime = 0; } catch(e){}
+        try { gameMusic.play(); } catch(e){}
+      } else {
+        // result/leaderboard: matikan semua musik
+        try { lobbyMusic.pause(); lobbyMusic.currentTime = 0; } catch(e){}
+        try { gameMusic.pause(); gameMusic.currentTime = 0; } catch(e){}
+      }
+    }
 
     const stage = document.getElementById('stage');
 
@@ -461,6 +477,25 @@
       world.player.x = 140; world.player.y = world.h/2; world.player.vx = 0; world.player.vy = 0;
     }
 
+    // --- AUDIO SETUP ---
+const lobbyMusic = new Audio('blue.mp3');
+lobbyMusic.loop = true;
+lobbyMusic.volume = 0.5;
+
+const gameMusic = new Audio('zoltrak.mp3');
+gameMusic.loop = true;
+gameMusic.volume = 0.5;
+
+const sndType = new Audio('tap.mp3');
+const sndClick = new Audio('click.mp3');
+
+const sndCorrect = new Audio('letgo.mp3');
+const sndWrong = new Audio('bawakdehek.mp3');
+const sndCrash = new Audio('goddamn.mp3');
+
+// Tambahkan audio khusus
+const sndSpecial = new Audio('omg.mp3');
+
     async function startGame(){
       // Choose char image
       imgChar = await loadImage(state.selectedChar === 0 ? assets.char0 : assets.char1);
@@ -477,6 +512,7 @@
       goto('game');
       lastTime = performance.now();
       rafId = requestAnimationFrame(gameLoop);
+      try { await bgMusic.play(); } catch(e){}
     }
 
     function spawnObstacle(){
@@ -511,41 +547,45 @@
       ctx.fillRect(0, world.h-60, world.w, 2);
     }
 
-    function update(dt){
-      // spawn obstacles
-      world.lastSpawn += dt;
-      if(world.lastSpawn >= world.spawnEvery){ world.lastSpawn = 0; spawnObstacle(); }
-      // move obstacles
-      const speed = world.speed + (state.quizIndex*0.3); // a bit faster each quiz
-      world.obstacles.forEach(o => { o.x -= speed; });
-      // remove offscreen
-      world.obstacles = world.obstacles.filter(o => o.x + o.w > -40);
+    // Tambahkan variabel global obstacleSpeed
+let obstacleSpeed = world.speed;
 
-      // player move
-      world.player.x += world.player.vx; world.player.y += world.player.vy;
-      // bounds
-      const m = 6; // margin
-      world.player.x = Math.max(32+m, Math.min(world.w-32-m, world.player.x));
-      world.player.y = Math.max(32+m, Math.min(world.h-32-60, world.player.y));
+// Pada update(dt), gunakan obstacleSpeed
+function update(dt){
+  // spawn obstacles
+  world.lastSpawn += dt;
+  if(world.lastSpawn >= world.spawnEvery){ world.lastSpawn = 0; spawnObstacle(); }
+  // move obstacles
+  const speed = obstacleSpeed + (state.quizIndex*0.3); // gunakan obstacleSpeed
+  world.obstacles.forEach(o => { o.x -= speed; });
+  // remove offscreen
+  world.obstacles = world.obstacles.filter(o => o.x + o.w > -40);
 
-      // survive timer
-      world.surviveSince += dt;
-      hudSurvive.textContent = (world.surviveSince/1000).toFixed(1);
+  // player move
+  world.player.x += world.player.vx; world.player.y += world.player.vy;
+  // bounds
+  const m = 6; // margin
+  world.player.x = Math.max(32+m, Math.min(world.w-32-m, world.player.x));
+  world.player.y = Math.max(32+m, Math.min(world.h-32-60, world.player.y));
 
-      // collision
-      const pr = world.player.r;
-      for(const o of world.obstacles){
-        if(circleRectCollide(world.player.x, world.player.y, pr, o.x, o.y, o.w, o.h)){
-          crash(); return;
-        }
-      }
+  // survive timer
+  world.surviveSince += dt;
+  hudSurvive.textContent = (world.surviveSince/1000).toFixed(1);
 
-      // Trigger quiz after 10s survival, up to 4 quizzes
-      if(state.quizIndex < 4 && world.surviveSince >= QUIZ_EVERY_SURVIVE){
-        world.surviveSince = 0; // reset survival timer
-        pauseForQuiz();
-      }
+  // collision
+  const pr = world.player.r;
+  for(const o of world.obstacles){
+    if(circleRectCollide(world.player.x, world.player.y, pr, o.x, o.y, o.w, o.h)){
+      crash(); return;
     }
+  }
+
+  // Trigger quiz after 10s survival, up to 4 quizzes
+  if(state.quizIndex < 4 && world.surviveSince >= QUIZ_EVERY_SURVIVE){
+    world.surviveSince = 0; // reset survival timer
+    pauseForQuiz();
+  }
+}
 
     function gameLoop(now){
       if(!state.running) return;
@@ -559,6 +599,7 @@
     function crash(){
       state.crashed = true; state.running = false;
       cancelAnimationFrame(rafId);
+      try { sndCrash.currentTime = 0; sndCrash.play(); } catch(e){}
       FAIL_POP.classList.add('show');
     }
 
@@ -570,6 +611,8 @@
     function pauseForQuiz(){
       // Pause loop
       cancelAnimationFrame(rafId);
+      // Perlambat obstacle
+      obstacleSpeed = world.speed * 0.5; // misal 50% lebih lambat
       // Build quiz UI
       const idx = state.quizIndex;
       const data = QUIZZES[idx];
@@ -596,27 +639,50 @@
       if(timerLeft <= 0){ submitAnswer(false); }
     }
 
-    function submitAnswer(correct){
-      clearInterval(quizTimerId); quizTimerId = null;
-      // Score: cepat = poin lebih besar jika jawaban benar
-      if(correct){
-        const bonus = Math.round((timerLeft/1000) * 100); // 100 poin per detik sisa
-        state.score += Math.max(50, bonus); // minimal 50
-      }
-      hudScore.textContent = state.score.toString();
-      state.quizIndex++;
-      hudQuiz.textContent = state.quizIndex.toString();
-      quizOverlay.classList.remove('show');
+    // Sound efek saat quiz dijawab
+function submitAnswer(correct){
+  clearInterval(quizTimerId); quizTimerId = null;
+  obstacleSpeed = world.speed; // kembali normal
+  if(correct){
+    // Jika soal terakhir dan benar, mainkan suara khusus
+    if(state.quizIndex === 3){
+      try { sndSpecial.currentTime = 0; sndSpecial.play(); } catch(e){}
+    } else {
+      try { sndCorrect.currentTime = 0; sndCorrect.play(); } catch(e){}
+    }
+    // Score: cepat = poin lebih besar jika jawaban benar
+    if(correct){
+      const bonus = Math.round((timerLeft/1000) * 100); // 100 poin per detik sisa
+      state.score += Math.max(50, bonus); // minimal 50
+    }
+    hudScore.textContent = state.score.toString();
+    state.quizIndex++;
+    hudQuiz.textContent = state.quizIndex.toString();
+    quizOverlay.classList.remove('show');
 
+    if(state.quizIndex >= 4){
+      // selesai
+      finishGame();
+    } else {
+      // resume game loop
+      lastTime = performance.now();
+      rafId = requestAnimationFrame(gameLoop);
+    }
+  } else {
+    try { sndWrong.currentTime = 0; sndWrong.play(); } catch(e){}
+    quizOverlay.classList.remove('show');
+    // langsung munculin soal berikutnya setelah 1 detik
+    setTimeout(() => {
+      state.quizIndex++;
       if(state.quizIndex >= 4){
-        // selesai
         finishGame();
       } else {
-        // resume game loop
         lastTime = performance.now();
         rafId = requestAnimationFrame(gameLoop);
       }
-    }
+    }, 1000);
+  }
+}
 
     function finishGame(){
       state.running = false; cancelAnimationFrame(rafId);
@@ -685,7 +751,9 @@
     window.addEventListener('touchend', ()=>{ dragging=false; resetStick(); });
 
     // initialize stick center after layout
-    window.addEventListener('load', resetStick);
+    window.addEventListener('load', () => {
+  try { lobbyMusic.currentTime = 0; lobbyMusic.play(); } catch(e){}
+});
     window.addEventListener('resize', resetStick);
 
     // =============================
@@ -734,6 +802,48 @@ function requestFullScreen() {
   else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
   else if (el.msRequestFullscreen) el.msRequestFullscreen();
 }
+
+const btnFullscreen = document.getElementById('btnFullscreen');
+const btnExitFullscreen = document.getElementById('btnExitFullscreen');
+
+btnFullscreen.addEventListener('click', () => {
+  requestFullScreen();
+  btnFullscreen.style.display = 'none';
+  btnExitFullscreen.style.display = 'block';
+});
+
+btnExitFullscreen.addEventListener('click', () => {
+  if (document.exitFullscreen) document.exitFullscreen();
+  else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+  else if (document.msExitFullscreen) document.msExitFullscreen();
+  btnFullscreen.style.display = 'block';
+  btnExitFullscreen.style.display = 'none';
+});
+
+// Sound efek saat mengetik di input username
+usernameEl.addEventListener('input', () => {
+  try { sndType.currentTime = 0; sndType.play(); } catch(e){}
+});
+
+// Sound efek saat klik tombol
+document.querySelectorAll('button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    try { sndClick.currentTime = 0; sndClick.play(); } catch(e){}
+  });
+});
+
+// Tambahkan variabel audioStarted
+let audioStarted = false;
+function startAudioIfNeeded() {
+  if (!audioStarted) {
+    audioStarted = true;
+    try { lobbyMusic.currentTime = 0; lobbyMusic.play(); } catch(e){}
+  }
+}
+
+// Play audio setelah interaksi user pertama
+window.addEventListener('click', startAudioIfNeeded, { once: true });
+window.addEventListener('touchstart', startAudioIfNeeded, { once: true });
   </script>
 </body>
 </html>
