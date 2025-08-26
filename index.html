@@ -15,24 +15,26 @@
 
     /* --- APP WRAPPER (locks to 16:9) --- */
     
-    .app-wrap {
-      position: relative; 
-      height: 100svh; 
-      width: 100vw;
-      display: grid; 
-      place-items: center; 
-      overflow: hidden;
-      color: #e6f0ff;
-    
-    }
-
-    .stage {
+   .app-wrap {
   position: relative;
-  width: 100vw;         /* default penuh */
-  height: 100vh;        /* default penuh */
-  max-width: calc(100vh * 16 / 9);   /* batasi supaya tetap 16:9 */
-  max-height: calc(100vw * 9 / 16);  /* batasi supaya tetap 16:9 */
-  aspect-ratio: 16 / 9; 
+  height: 100svh;   /* full layar safe viewport */
+  width: 100vw;
+  display: flex; 
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  color: #e6f0ff;
+  background:#0b0f14;
+}
+
+
+.stage {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  max-width: 100vw;
+  max-height: 100vh;
+  aspect-ratio: 16 / 9;
   margin: auto;
   background: #ee1414;
   border: 3px solid #e6e8eb;
@@ -79,10 +81,19 @@
     /* --- CHARACTER SELECT --- */
     .select-wrap { height:100%; display:grid; grid-template-rows: auto 1fr auto; padding:16px; background:#1c0c0c; gap:12px; }
     .select-grid { display:grid; grid-template-columns: 1fr 1fr; gap:16px; height:100%; }
-    .char-card { background:#311212; border:2px solid #5e2828; border-radius:16px; padding:12px; display:grid; grid-template-rows: 1fr auto; cursor:pointer; transition:.15s; }
+    .char-card { 
+  background:#311212; 
+  border:0.5px solid #5e2828; /* Ubah dari 2px ke 1px */
+  border-radius:16px; 
+  padding:12px; 
+  display:grid; 
+  grid-template-rows: 1fr auto; 
+  cursor:pointer; 
+  transition:.15s; 
+}
     .char-card:hover { transform: translateY(-2px); }
     .char-img { display:grid; place-items:center; background:#220d0d; border-radius:12px; overflow:hidden; }
-    .char-img img { width: 75%; image-rendering: pixelated; }
+    .char-img img { width: 50%; image-rendering: pixelated; }
     .char-label { text-align:center; padding:10px; font-weight:800; }
     .char-card.selected { outline: 3px solid #ff4f4f; }
 
@@ -128,6 +139,58 @@
     table { width:100%; border-collapse:collapse; }
     th, td { padding:12px; border-bottom:1px solid #491818; }
     th { text-align:left; background:#341010; position:sticky; top:0; }
+
+    /* Responsive quiz overlay & panel */
+@media (max-width: 700px), (max-height: 500px) {
+  .overlay .panel, .popup .panel {
+    width: 98vw;
+    max-width: 98vw;
+    padding: 10vw 2vw;
+    font-size: 1rem;
+    box-sizing: border-box;
+  }
+  .options { font-size: 0.95em; }
+  .opt-btn { padding: 10px; font-size: 1em; }
+}
+
+/* Make canvas fit parent */
+.stage canvas {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100vw;
+  max-height: 100vh;
+}
+
+/* Make overlay always visible and scrollable if needed */
+.overlay .panel, .popup .panel {
+  overflow-y: auto;
+  max-height: 90vh;
+}
+
+/* Responsive stage & character select for small screens */
+@media (max-width: 700px), (max-height: 500px) {
+  .stage {
+    aspect-ratio: unset;
+    width: 100vw;
+    height: 100svh;
+    max-width: 100vw;
+    max-height: 100svh;
+    border-radius: 8px;
+    border-width: 2px;
+  }
+  .select-wrap {
+    padding: 4vw 2vw;
+    gap: 6px;
+  }
+  .select-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .char-card {
+    min-height: 180px;
+    padding: 8px;
+  }
+}
 
   </style>
 </head>
